@@ -94,10 +94,10 @@ fn plugin_id(plugin: &Plugin, key: &str, cwd: &str) -> String {
                 .unwrap()
                 .to_string_lossy()
                 .to_string();
-            format!("{}:{}", cwd, filename)
+            format!("{}_{}", cwd, filename)
         }
         Plugin::Cloud(id) => {
-            format!("{}:{}_{}", cwd, key, id)
+            format!("{}_{}_{}", cwd, key, id)
         }
     }
 }
