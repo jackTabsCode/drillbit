@@ -2,6 +2,12 @@
 name = "drillbit"
 version = "0.1.0"
 edition = "2024"
+description = " A plugin installation tool for Roblox"
+license = "MIT"
+authors = ["Jack T <jack@jackt.space>"]
+repository = "https://github.com/jacktabscode/drillbit"
+homepage = "https://github.com/jacktabscode/drillbit"
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.99"
