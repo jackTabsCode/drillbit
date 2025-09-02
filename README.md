@@ -4,6 +4,14 @@ Drillbit is an extremely simple CLI tool that lets you define a set of Roblox pl
 
 I made this so that I could use the same plugins in my project across two different machines.
 
+## Installation
+
+I probably won't start publishing binaries yet, so for now, you can install with Cargo:
+
+```bash
+cargo install drillbit
+```
+
 ## Configuration
 
 ```toml
