@@ -14,6 +14,8 @@ cargo install drillbit
 
 ## Configuration
 
+Create a file named `drillbit.toml` in your project's directory.
+
 ```toml
 # You can use local files in your project
 [plugins.editor_position]
