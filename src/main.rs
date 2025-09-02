@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    manifest::{Manifest, Plugin},
+    config::{Config, Plugin},
     web::WebClient,
 };
 use anyhow::Context;
@@ -13,7 +13,7 @@ use fs_err::tokio as fs;
 use log::{LevelFilter, info, warn};
 use roblox_studio_utils::RobloxStudioPaths;
 
-mod manifest;
+mod config;
 mod web;
 
 #[tokio::main]
@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         .format_timestamp(None)
         .init();
 
-    let manifest = Manifest::read().await.context("Failed to read manifest")?;
+    let config = Config::read().await.context("Failed to read config")?;
 
     let paths = RobloxStudioPaths::new().context("Failed to get Roblox Studio paths")?;
     let plugins_path = paths.user_plugins();
@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut existing_plugins = get_existing_hashes(plugins_path).await?;
 
-    for (key, plugin) in manifest.plugins {
+    for (key, plugin) in config.plugins {
         let id = plugin_id(&plugin, &key, cwd);
         let mut path = plugins_path.join(&id);
 

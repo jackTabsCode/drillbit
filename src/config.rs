@@ -8,19 +8,19 @@ pub const FILE_NAME: &str = "drillbit.toml";
 const ALLOWED_EXTS: &[&str] = &["rbxm", "rbxmx", "lua", "luau"];
 
 #[derive(Debug, Deserialize)]
-pub struct Manifest {
+pub struct Config {
     #[serde(default)]
     pub plugins: HashMap<String, Plugin>,
 }
 
-impl Manifest {
-    pub async fn read() -> anyhow::Result<Manifest> {
+impl Config {
+    pub async fn read() -> anyhow::Result<Config> {
         let content = fs::read_to_string(FILE_NAME).await?;
-        let manifest: Manifest = toml::from_str(&content)?;
+        let config: Config = toml::from_str(&content)?;
 
         let allowed_exts = ALLOWED_EXTS.join(", ");
 
-        for (name, plugin) in &manifest.plugins {
+        for (name, plugin) in &config.plugins {
             if let Plugin::Local(path) = plugin {
                 match path.extension() {
                     Some(extension) if !ALLOWED_EXTS.contains(&extension) => {
@@ -43,7 +43,7 @@ impl Manifest {
             }
         }
 
-        Ok(manifest)
+        Ok(config)
     }
 }
 
