@@ -6,7 +6,13 @@ I made this so that I could use the same plugins in my project across two differ
 
 ## Installation
 
-I probably won't start publishing binaries yet, so for now, you can install with Cargo:
+You can use a tool manager like [Mise](https://mise.jdx.dev) to install drillbit:
+
+```bash
+mise use ubi:drillbit
+```
+
+Or you can install from source:
 
 ```bash
 cargo install drillbit
@@ -36,6 +42,24 @@ drillbit
 [INFO  drillbit] Reading "editor_position"...
 [INFO  drillbit] Writing "/Users/jack/Documents/Roblox/Plugins/my_project:editor_position.luau"...
 [INFO  drillbit] Plugins installed successfully!
+```
+
+### Watching for Changes
+
+Drillbit doesn't ship with a file watcher, but you can pair it with a task runner like [Mise](https://mise.jdx.dev) to watch for changes and run as needed. Here's my setup!
+
+```toml
+[tasks.drillbit]
+run = "drillbit"
+sources = ["plugins/*", "drillbit.toml"]
+
+[tasks.watch-drillbit]
+run = "mise watch drillbit"
+
+[tasks.dev]
+description = "Starts the Rojo server and compiler in watch mode"
+alias = "d"
+depends = ["watch-drillbit", "compile --watch", "serve"]
 ```
 
 ### Duplicated Plugins
