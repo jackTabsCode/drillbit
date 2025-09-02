@@ -1,3 +1,4 @@
 /target
 drillbit.toml
 /plugins
+.DS_Store
