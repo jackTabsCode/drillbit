@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 pub const FILE_NAME: &str = "drillbit.toml";
-const ALLOWED_EXTS: &[&str] = &["rbxm", "rbxmx", "lua", "luau"];
+const ALLOWED_EXTS: &[&str] = &["rbxm", "rbxmx", "lua"];
 
 #[derive(Debug, Deserialize)]
 pub struct Config {

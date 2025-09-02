@@ -25,7 +25,7 @@ Create a file named `drillbit.toml` in your project's directory.
 ```toml
 # You can use local files in your project
 [plugins.editor_position]
-local = "plugins/editor_position.luau"
+local = "plugins/editor_position.lua" # note that Roblox doesn't load `.luau` files as local plugins, so ya gotta use `.lua`
 
 # You can also add plugins on the Creator Store
 [plugins.hoarcekat]
@@ -40,7 +40,7 @@ drillbit
 [INFO  drillbit] Reading "hoarcekat"...
 [INFO  drillbit] Writing "/Users/jack/Documents/Roblox/Plugins/my_project:hoarcekat_4621580428.rbxm"...
 [INFO  drillbit] Reading "editor_position"...
-[INFO  drillbit] Writing "/Users/jack/Documents/Roblox/Plugins/my_project:editor_position.luau"...
+[INFO  drillbit] Writing "/Users/jack/Documents/Roblox/Plugins/my_project:editor_position.lua"...
 [INFO  drillbit] Plugins installed successfully!
 ```
 
