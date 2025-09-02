@@ -1,9 +1,3 @@
-use std::{
-    collections::HashMap,
-    env,
-    path::{Path, PathBuf},
-};
-
 use crate::{
     config::{Config, Plugin},
     web::WebClient,
@@ -12,6 +6,11 @@ use anyhow::Context;
 use fs_err::tokio as fs;
 use log::{LevelFilter, info, warn};
 use roblox_studio_utils::RobloxStudioPaths;
+use std::{
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+};
 
 mod config;
 mod web;
