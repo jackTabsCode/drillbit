@@ -25,7 +25,7 @@ Create a file named `drillbit.toml` in your project's directory.
 ```toml
 # You can use local files in your project
 [plugins.editor_position]
-local = "plugins/editor_position.lua" # note that Roblox doesn't load `.luau` files as local plugins, so ya gotta use `.lua`
+local = "plugins/editor_position.luau" # note that Roblox doesn't load `.luau` files as local plugins, so they will be renamed to `.lua`
 
 # You can also add plugins on the Creator Store
 [plugins.hoarcekat]

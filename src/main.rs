@@ -24,7 +24,15 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::read().await.context("Failed to read config")?;
 
-    let client = WebClient::new()?;
+    let has_cloud_plugins = config
+        .plugins
+        .values()
+        .any(|plugin| matches!(plugin, Plugin::Cloud(_)));
+    let client = if has_cloud_plugins {
+        Some(WebClient::new()?)
+    } else {
+        None
+    };
 
     let cwd_path = env::current_dir().unwrap();
     let cwd = cwd_path.file_name().unwrap().to_str().unwrap();
@@ -38,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
         let mut path = plugins_path.join(&id);
 
         info!("Reading \"{key}\"...");
-        let (data, ext) = read_plugin(&client, &plugin).await?;
+        let (data, ext) = read_plugin(client.as_ref(), &plugin).await?;
 
         if let Some(ext) = ext {
             path.set_extension(ext);
@@ -121,11 +129,12 @@ fn plugin_id(plugin: &Plugin, key: &str, cwd: &str) -> String {
 }
 
 async fn read_plugin(
-    client: &WebClient,
+    client: Option<&WebClient>,
     plugin: &Plugin,
 ) -> anyhow::Result<(Vec<u8>, Option<String>)> {
     match plugin {
         Plugin::Cloud(id) => {
+            let client = client.context("WebClient is required for cloud plugins")?;
             let data = client
                 .download_plugin(*id)
                 .await
@@ -134,10 +143,17 @@ async fn read_plugin(
             Ok((data, Some("rbxm".to_string())))
         }
         Plugin::Local(path) => {
+            let mut new_ext = None;
+
+            if let Some(ext) = path.extension()
+                && ext == "luau"
+            {
+                new_ext = Some("lua".to_string());
+            }
             let path = path.to_path(".");
             let data = fs::read(path).await.context("Failed to read plugin")?;
 
-            Ok((data, None))
+            Ok((data, new_ext))
         }
     }
 }

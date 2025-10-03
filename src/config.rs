@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 pub const FILE_NAME: &str = "drillbit.toml";
-const ALLOWED_EXTS: &[&str] = &["rbxm", "rbxmx", "lua"];
+const ALLOWED_EXTS: &[&str] = &["rbxm", "rbxmx", "lua", "luau"];
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -16,11 +16,11 @@ pub struct Config {
 impl Config {
     pub async fn read() -> anyhow::Result<Config> {
         let content = fs::read_to_string(FILE_NAME).await?;
-        let config: Config = toml::from_str(&content)?;
+        let mut config: Config = toml::from_str(&content)?;
 
         let allowed_exts = ALLOWED_EXTS.join(", ");
 
-        for (name, plugin) in &config.plugins {
+        for (name, plugin) in &mut config.plugins {
             if let Plugin::Local(path) = plugin {
                 match path.extension() {
                     Some(extension) if !ALLOWED_EXTS.contains(&extension) => {
