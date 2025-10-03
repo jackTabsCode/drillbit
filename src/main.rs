@@ -2,9 +2,9 @@ use crate::{
     config::{Config, Plugin},
     web::WebClient,
 };
-use anyhow::Context;
+use anyhow::{Context, bail};
 use fs_err::tokio as fs;
-use log::{LevelFilter, info, warn};
+use log::{LevelFilter, debug, info, warn};
 use roblox_studio_utils::RobloxStudioPaths;
 use std::{
     collections::HashMap,
@@ -24,15 +24,14 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::read().await.context("Failed to read config")?;
 
-    let paths = RobloxStudioPaths::new().context("Failed to get Roblox Studio paths")?;
-    let plugins_path = paths.user_plugins();
-
     let client = WebClient::new()?;
 
     let cwd_path = env::current_dir().unwrap();
     let cwd = cwd_path.file_name().unwrap().to_str().unwrap();
 
-    let mut existing_plugins = get_existing_hashes(plugins_path).await?;
+    let plugins_path = get_plugins_path().context("Failed to get plugins path")?;
+
+    let mut existing_plugins = get_existing_hashes(&plugins_path).await?;
 
     for (key, plugin) in config.plugins {
         let id = plugin_id(&plugin, &key, cwd);
@@ -64,6 +63,26 @@ async fn main() -> anyhow::Result<()> {
     info!("Plugins installed successfully!");
 
     Ok(())
+}
+
+fn get_plugins_path() -> anyhow::Result<PathBuf> {
+    if let Ok(var) = env::var("ROBLOX_PLUGINS_PATH") {
+        let path = PathBuf::from(var);
+
+        if path.exists() {
+            debug!("Using environment variable plugins path: {path:?}");
+            return Ok(path);
+        } else {
+            bail!("Plugins path `{}` does not exist", path.display());
+        }
+    }
+
+    let studio_paths = RobloxStudioPaths::new()?;
+    let path = studio_paths.user_plugins().to_path_buf();
+
+    debug!("Using auto-detected plugins path: {path:?}");
+
+    Ok(path)
 }
 
 async fn get_existing_hashes(
