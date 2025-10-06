@@ -48,8 +48,9 @@ impl Config {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "lowercase")]
 pub enum Plugin {
     Local(RelativePathBuf),
     Cloud(u64),
+    GitHub(String),
 }

@@ -1,6 +1,6 @@
 use crate::{
+    backends::{Backend, CloudBackend, GitHubBackend, LocalBackend},
     config::{Config, Plugin},
-    web::WebClient,
 };
 use anyhow::{Context, bail};
 use fs_err::tokio as fs;
@@ -12,8 +12,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod backends;
 mod config;
-mod web;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -24,16 +24,6 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::read().await.context("Failed to read config")?;
 
-    let has_cloud_plugins = config
-        .plugins
-        .values()
-        .any(|plugin| matches!(plugin, Plugin::Cloud(_)));
-    let client = if has_cloud_plugins {
-        Some(WebClient::new()?)
-    } else {
-        None
-    };
-
     let cwd_path = env::current_dir().unwrap();
     let cwd = cwd_path.file_name().unwrap().to_str().unwrap();
 
@@ -41,12 +31,29 @@ async fn main() -> anyhow::Result<()> {
 
     let mut existing_plugins = get_existing_hashes(&plugins_path).await?;
 
-    for (key, plugin) in config.plugins {
-        let id = plugin_id(&plugin, &key, cwd);
-        let mut path = plugins_path.join(&id);
+    fn get_or_create_backend<T: Backend>(backend: &mut Option<T>) -> anyhow::Result<&mut T> {
+        if backend.is_none() {
+            *backend = Some(T::new()?);
+        }
+        Ok(backend.as_mut().unwrap())
+    }
 
+    let mut local_backend: Option<LocalBackend> = None;
+    let mut github_backend: Option<GitHubBackend> = None;
+    let mut cloud_backend: Option<CloudBackend> = None;
+
+    for (key, plugin) in config.plugins {
+        let backend: &mut dyn Backend = match &plugin {
+            Plugin::Local(_) => get_or_create_backend(&mut local_backend)?,
+            Plugin::GitHub(_) => get_or_create_backend(&mut github_backend)?,
+            Plugin::Cloud(_) => get_or_create_backend(&mut cloud_backend)?,
+        };
+
+        let id = backend.plugin_id(&plugin, &key, cwd);
         info!("Reading \"{key}\"...");
-        let (data, ext) = read_plugin(client.as_ref(), &plugin).await?;
+        let (data, ext) = backend.download(&plugin).await?;
+
+        let mut path = plugins_path.join(&id);
 
         if let Some(ext) = ext {
             path.set_extension(ext);
@@ -109,51 +116,4 @@ async fn get_existing_hashes(
     }
 
     Ok(existing_plugins)
-}
-
-fn plugin_id(plugin: &Plugin, key: &str, cwd: &str) -> String {
-    match plugin {
-        Plugin::Local(path) => {
-            let filename = path
-                .to_path(".")
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-            format!("{}_{}", cwd, filename)
-        }
-        Plugin::Cloud(id) => {
-            format!("{}_{}_{}", cwd, key, id)
-        }
-    }
-}
-
-async fn read_plugin(
-    client: Option<&WebClient>,
-    plugin: &Plugin,
-) -> anyhow::Result<(Vec<u8>, Option<String>)> {
-    match plugin {
-        Plugin::Cloud(id) => {
-            let client = client.context("WebClient is required for cloud plugins")?;
-            let data = client
-                .download_plugin(*id)
-                .await
-                .context("Failed to download plugin")?;
-
-            Ok((data, Some("rbxm".to_string())))
-        }
-        Plugin::Local(path) => {
-            let mut new_ext = None;
-
-            if let Some(ext) = path.extension()
-                && ext == "luau"
-            {
-                new_ext = Some("lua".to_string());
-            }
-            let path = path.to_path(".");
-            let data = fs::read(path).await.context("Failed to read plugin")?;
-
-            Ok((data, new_ext))
-        }
-    }
 }

@@ -30,6 +30,10 @@ local = "plugins/editor_position.luau" # note that Roblox doesn't load `.luau` f
 # You can also add plugins on the Creator Store
 [plugins.hoarcekat]
 cloud = 4621580428
+
+# You can also use GitHub release artifacts
+[plugins.jest_companion]
+github = "https://github.com/jackTabsCode/jest-companion/releases/download/v0.1.1/plugin.rbxm"
 ```
 
 ## Usage
