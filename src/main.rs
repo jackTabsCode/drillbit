@@ -2,10 +2,10 @@ use crate::{
     backends::{Backend, CloudBackend, GitHubBackend, LocalBackend},
     config::{Config, Plugin},
 };
-use anyhow::{Context, bail};
+use anyhow::Context;
 use fs_err::tokio as fs;
-use log::{LevelFilter, debug, info, warn};
-use roblox_studio_utils::RobloxStudioPaths;
+use log::{LevelFilter, info, warn};
+use roblox_install::RobloxStudio;
 use std::{
     collections::HashMap,
     env,
@@ -27,7 +27,8 @@ async fn main() -> anyhow::Result<()> {
     let cwd_path = env::current_dir().unwrap();
     let cwd = cwd_path.file_name().unwrap().to_str().unwrap();
 
-    let plugins_path = get_plugins_path().context("Failed to get plugins path")?;
+    let studio_paths = RobloxStudio::locate()?;
+    let plugins_path = studio_paths.plugins_path().to_path_buf();
 
     let mut existing_plugins = get_existing_hashes(&plugins_path).await?;
 
@@ -78,26 +79,6 @@ async fn main() -> anyhow::Result<()> {
     info!("Plugins installed successfully!");
 
     Ok(())
-}
-
-fn get_plugins_path() -> anyhow::Result<PathBuf> {
-    if let Ok(var) = env::var("ROBLOX_PLUGINS_PATH") {
-        let path = PathBuf::from(var);
-
-        if path.exists() {
-            debug!("Using environment variable plugins path: {path:?}");
-            return Ok(path);
-        } else {
-            bail!("Plugins path `{}` does not exist", path.display());
-        }
-    }
-
-    let studio_paths = RobloxStudioPaths::new()?;
-    let path = studio_paths.user_plugins().to_path_buf();
-
-    debug!("Using auto-detected plugins path: {path:?}");
-
-    Ok(path)
 }
 
 async fn get_existing_hashes(

@@ -9,19 +9,19 @@ repository = "https://github.com/jacktabscode/drillbit"
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.99"
-async-trait = "0.1.86"
+anyhow = "1.0.100"
+async-trait = "0.1.89"
 blake3 = "1.8.2"
 env_logger = "0.11.8"
-fs-err = { version = "3.1.1", features = ["tokio"] }
-log = "0.4.27"
+fs-err = { version = "3.2.2", features = ["tokio"] }
+log = "0.4.29"
 rbx_cookie = { version = "0.1.5", default-features = false }
 relative-path = { version = "2.0.1", features = ["serde"] }
-reqwest = { version = "0.12.23", features = ["gzip", "json", "rustls-tls"] }
-roblox-studio-utils = "0.2.0"
-serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.47.1", features = ["fs", "macros", "rt-multi-thread"] }
-toml = "0.9.5"
+reqwest = { version = "0.13.1", features = ["gzip", "json", "rustls"] }
+roblox_install = "1.0.0"
+serde = { version = "1.0.228", features = ["derive"] }
+tokio = { version = "1.49.0", features = ["fs", "macros", "rt-multi-thread"] }
+toml = "0.9.10"
 
 # The profile that 'dist' will build with
 [profile.dist]
