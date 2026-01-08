@@ -9,7 +9,7 @@ I made this so that I could use the same plugins in my project across two differ
 You can use a tool manager like [Mise](https://mise.jdx.dev) to install drillbit:
 
 ```bash
-mise use ubi:jacktabscode/drillbit
+mise use github:jacktabscode/drillbit
 ```
 
 Or you can install from source:
@@ -39,6 +39,7 @@ github = "https://github.com/jackTabsCode/jest-companion/releases/download/v0.1.
 ## Usage
 
 Simply run it in your project's directory:
+
 ```
 drillbit
 [INFO  drillbit] Reading "hoarcekat"...
