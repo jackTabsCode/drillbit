@@ -2,14 +2,9 @@
 members = ["cargo:."]
 
 [dist]
-cargo-dist-version = "0.29.0"
+cargo-dist-version = "0.30.3"
 ci = "github"
 installers = []
-targets = [
-  "aarch64-apple-darwin",
-  "x86_64-apple-darwin",
-  "x86_64-unknown-linux-gnu",
-  "x86_64-pc-windows-msvc",
-]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 checksum = "false"
 source-tarball = false
