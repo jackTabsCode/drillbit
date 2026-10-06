@@ -36,6 +36,16 @@ cloud = 4621580428
 github = "https://github.com/jackTabsCode/jest-companion/releases/download/v0.1.1/plugin.rbxm"
 ```
 
+### Private GitHub Repositories
+
+To install release artifacts from private repositories, drillbit needs a GitHub token. It looks for one in this order:
+
+1. The `GITHUB_TOKEN` environment variable
+2. The `GH_TOKEN` environment variable
+3. The output of `gh auth token`, if you're logged in with the [GitHub CLI](https://cli.github.com)
+
+Fine-grained tokens need the **Contents: Read** permission on the repository. Classic tokens need the `repo` scope.
+
 ## Usage
 
 Simply run it in your project's directory:

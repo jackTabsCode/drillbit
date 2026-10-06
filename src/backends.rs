@@ -1,8 +1,9 @@
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use fs_err::tokio as fs;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::Deserialize;
+use std::{env, process::Command};
 
 use crate::config::Plugin;
 
@@ -135,22 +136,67 @@ impl Backend for CloudBackend {
 
 pub struct GitHubBackend {
     client: Client,
+    token: Option<String>,
 }
 
-#[async_trait]
-impl Backend for GitHubBackend {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            client: Client::new(),
-        })
+impl GitHubBackend {
+    fn get_token() -> Option<String> {
+        let token = env::var("GITHUB_TOKEN")
+            .or_else(|_| env::var("GH_TOKEN"))
+            .ok()
+            .or_else(|| {
+                let output = Command::new("gh").args(["auth", "token"]).output().ok()?;
+                output
+                    .status
+                    .success()
+                    .then(|| String::from_utf8_lossy(&output.stdout).to_string())
+            })?;
+
+        let token = token.trim().to_string();
+        (!token.is_empty()).then_some(token)
     }
 
-    async fn download(&mut self, plugin: &Plugin) -> Result<(Vec<u8>, Option<String>)> {
-        let Plugin::GitHub(url) = plugin else {
-            unimplemented!()
-        };
+    async fn download_with_token(
+        &self,
+        token: &str,
+        owner_repo: &str,
+        tag: &str,
+        asset_name: &str,
+    ) -> Result<Vec<u8>> {
+        let res = self
+            .client
+            .get(format!(
+                "https://api.github.com/repos/{owner_repo}/releases/tags/{tag}"
+            ))
+            .bearer_auth(token)
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await?;
 
-        let res = self.client.get(url).send().await?;
+        if !res.status().is_success() {
+            bail!(
+                "GitHub release lookup for '{owner_repo}@{tag}' failed with status: {}",
+                res.status()
+            );
+        }
+
+        let release: ReleaseResponse = res.json().await?;
+        let asset = release
+            .assets
+            .iter()
+            .find(|asset| asset.name == asset_name)
+            .with_context(|| format!("Asset '{asset_name}' not found in release '{tag}'"))?;
+
+        let res = self
+            .client
+            .get(format!(
+                "https://api.github.com/repos/{owner_repo}/releases/assets/{}",
+                asset.id
+            ))
+            .bearer_auth(token)
+            .header("Accept", "application/octet-stream")
+            .send()
+            .await?;
 
         if !res.status().is_success() {
             bail!(
@@ -159,7 +205,58 @@ impl Backend for GitHubBackend {
             );
         }
 
+        Ok(res.bytes().await?.to_vec())
+    }
+}
+
+fn parse_release_url(url: &str) -> Option<(&str, &str, &str)> {
+    let rest = url.strip_prefix("https://github.com/")?;
+    let (rest, asset_name) = rest.rsplit_once('/')?;
+    let (owner_repo, tag) = rest.split_once("/releases/download/")?;
+    Some((owner_repo, tag, asset_name))
+}
+
+#[async_trait]
+impl Backend for GitHubBackend {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            client: Client::builder().user_agent("drillbit").build()?,
+            token: Self::get_token(),
+        })
+    }
+
+    async fn download(&mut self, plugin: &Plugin) -> Result<(Vec<u8>, Option<String>)> {
+        let Plugin::GitHub(url) = plugin else {
+            unimplemented!()
+        };
+
         let ext = url.split('.').next_back().map(|s| s.to_string());
+
+        if let Some(token) = &self.token
+            && let Some((owner_repo, tag, asset_name)) = parse_release_url(url)
+        {
+            let data = self
+                .download_with_token(token, owner_repo, tag, asset_name)
+                .await?;
+            return Ok((data, ext));
+        }
+
+        let res = self.client.get(url).send().await?;
+
+        if !res.status().is_success() {
+            if self.token.is_none() && res.status() == StatusCode::NOT_FOUND {
+                bail!(
+                    "GitHub release download failed with status: {}. If this is a private repository, set GITHUB_TOKEN or run `gh auth login`.",
+                    res.status()
+                );
+            }
+
+            bail!(
+                "GitHub release download failed with status: {}",
+                res.status()
+            );
+        }
+
         Ok((res.bytes().await?.to_vec(), ext))
     }
 
@@ -181,4 +278,15 @@ struct Location {
 #[derive(Deserialize)]
 struct AssetResponse {
     locations: Vec<Location>,
+}
+
+#[derive(Deserialize)]
+struct ReleaseAsset {
+    id: u64,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct ReleaseResponse {
+    assets: Vec<ReleaseAsset>,
 }
