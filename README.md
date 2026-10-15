@@ -46,6 +46,12 @@ To install release artifacts from private repositories, drillbit needs a GitHub 
 
 Fine-grained tokens need the **Contents: Read** permission on the repository. Classic tokens need the `repo` scope.
 
+### Private Roblox Assets
+
+By default, `cloud` plugins are downloaded using the Roblox cookie from your Roblox Studio login, so private plugins your account has access to will work out of the box.
+
+If you'd rather use an [Open Cloud API key](https://create.roblox.com/dashboard/credentials) (e.g. in CI), set the `ROBLOX_API_KEY` environment variable. The key needs the **legacy-asset:manage** scope, and must be created by an account with access to the plugin. When set, drillbit uses the API key instead of your cookie.
+
 ## Usage
 
 Simply run it in your project's directory:

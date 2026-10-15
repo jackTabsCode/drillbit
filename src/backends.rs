@@ -62,34 +62,68 @@ impl Backend for LocalBackend {
 }
 
 pub struct CloudBackend {
+    api_key: Option<String>,
     cookie: Option<String>,
     client: Client,
 }
 
 impl CloudBackend {
+    fn get_api_key() -> Option<String> {
+        let key = env::var("ROBLOX_API_KEY").ok()?;
+        let key = key.trim().to_string();
+        (!key.is_empty()).then_some(key)
+    }
+
     fn get_cookie(&mut self) -> Result<String> {
         if self.cookie.is_none() {
-            let cookie = rbx_cookie::get().context("Couldn't get Roblox cookie")?;
+            let cookie = rbx_cookie::get().context(
+                "Couldn't get Roblox cookie. Log in to Roblox Studio or set ROBLOX_API_KEY.",
+            )?;
             self.cookie = Some(cookie);
         }
         Ok(self.cookie.as_ref().unwrap().clone())
     }
-}
 
-#[async_trait]
-impl Backend for CloudBackend {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            cookie: None,
-            client: Client::new(),
-        })
+    async fn download_with_api_key(&self, api_key: &str, id: u64) -> Result<Vec<u8>> {
+        let res = self
+            .client
+            .get(format!(
+                "https://apis.roblox.com/asset-delivery-api/v1/assetId/{id}"
+            ))
+            .header("x-api-key", api_key)
+            .send()
+            .await?;
+
+        if !res.status().is_success() {
+            if matches!(
+                res.status(),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+            ) {
+                bail!(
+                    "Asset delivery for '{id}' failed with status: {}. Make sure ROBLOX_API_KEY has the legacy-asset:manage scope and access to this asset.",
+                    res.status()
+                );
+            }
+
+            bail!(
+                "Asset delivery for '{id}' failed with status: {}",
+                res.status()
+            );
+        }
+
+        let asset: OpenCloudAssetResponse = res.json().await?;
+
+        // The location is a signed CDN URL, so the API key isn't sent along with it
+        let file_res = self.client.get(asset.location).send().await?;
+
+        if !file_res.status().is_success() {
+            bail!("Download failed with status: {}", file_res.status());
+        }
+
+        Ok(file_res.bytes().await?.to_vec())
     }
 
-    async fn download(&mut self, plugin: &Plugin) -> Result<(Vec<u8>, Option<String>)> {
-        let Plugin::Cloud(id) = plugin else {
-            unreachable!()
-        };
-
+    async fn download_with_cookie(&mut self, id: u64) -> Result<Vec<u8>> {
         let cookie = self.get_cookie()?;
         let url = format!("https://assetdelivery.roblox.com/v2/asset?id={id}");
         let res = self
@@ -100,6 +134,16 @@ impl Backend for CloudBackend {
             .await?;
 
         if !res.status().is_success() {
+            if matches!(
+                res.status(),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+            ) {
+                bail!(
+                    "Request failed with status: {}. If this is a private asset, make sure your Roblox account has access to it, or set ROBLOX_API_KEY.",
+                    res.status()
+                );
+            }
+
             bail!("Request failed with status: {}", res.status());
         }
 
@@ -122,7 +166,31 @@ impl Backend for CloudBackend {
             bail!("Download failed with status: {}", file_res.status());
         }
 
-        Ok((file_res.bytes().await?.to_vec(), Some("rbxm".to_string())))
+        Ok(file_res.bytes().await?.to_vec())
+    }
+}
+
+#[async_trait]
+impl Backend for CloudBackend {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            api_key: Self::get_api_key(),
+            cookie: None,
+            client: Client::new(),
+        })
+    }
+
+    async fn download(&mut self, plugin: &Plugin) -> Result<(Vec<u8>, Option<String>)> {
+        let Plugin::Cloud(id) = plugin else {
+            unreachable!()
+        };
+
+        let data = match self.api_key.clone() {
+            Some(api_key) => self.download_with_api_key(&api_key, *id).await?,
+            None => self.download_with_cookie(*id).await?,
+        };
+
+        Ok((data, Some("rbxm".to_string())))
     }
 
     fn plugin_id(&self, plugin: &Plugin, key: &str, cwd: &str) -> String {
@@ -278,6 +346,11 @@ struct Location {
 #[derive(Deserialize)]
 struct AssetResponse {
     locations: Vec<Location>,
+}
+
+#[derive(Deserialize)]
+struct OpenCloudAssetResponse {
+    location: String,
 }
 
 #[derive(Deserialize)]
